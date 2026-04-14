@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>SA-DETR — Historical Document Analysis</title>
+
+<style>
+/* --- STYLE GLOBAL (harmonisé Forbin) --- */
+body {
+  font-family: 'Georgia', serif;
+  background-color: #f5ecdf;
+  color: #3e2f1c;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  text-align: center;
+
+  background-image: 
+    radial-gradient(rgba(255,255,255,0.5) 1px, transparent 1px),
+    linear-gradient(to bottom, #f7eee2, #efe3d0);
+  background-size: 6px 6px, 100% 100%;
+}
+
+/* --- TITRES --- */
+h1 {
+  font-family: 'Times New Roman', serif;
+  font-size: 2.5em;
+  margin-top: 1.5em;
+  margin-bottom: 0.3em;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #3b2a16;
+  text-shadow: 1px 1px 0 #fff, 2px 2px 0 #c9b39a;
+}
+
+h2 {
+  font-weight: normal;
+  font-size: 1.4em;
+  color: #6b5439;
+  margin-bottom: 2em;
+  max-width: 900px;
+  line-height: 1.4;
+}
+
+/* --- CARDS (style musée / archive) --- */
+.card {
+  background: #ede3d5;
+  border: 1px solid #c9b39a;
+  border-radius: 20px;
+  box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+  padding: 30px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  max-width: 950px;
+  text-align: left;
+  margin-bottom: 2.5em;
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 18px rgba(0,0,0,0.15);
+}
+
+/* --- IMAGE --- */
+.card img {
+  width: 220px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* --- TEXTE --- */
+.text-content {
+  flex: 1;
+}
+
+.text-content p {
+  font-size: 1.1em;
+  line-height: 1.7;
+  margin-bottom: 1em;
+}
+
+.text-content strong {
+  color: #8b6943;
+}
+
+/* --- SECTION BLOCK (ajout scientifique) --- */
+.section {
+  background: #ede3d5;
+  border: 1px solid #c9b39a;
+  border-radius: 20px;
+  padding: 30px 40px;
+  max-width: 950px;
+  margin-bottom: 2.5em;
+  text-align: left;
+  box-shadow: 0 8px 15px rgba(0,0,0,0.08);
+}
+
+.section h3 {
+  font-family: 'Times New Roman', serif;
+  color: #3b2a16;
+  margin-bottom: 15px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* --- WORKFLOW IMAGE --- */
+.workflow {
+  /* width: 100%; */
+  border-radius: 12px;
+  margin-top: 15px;
+  text-align: center;
+}
+
+/* --- BOUTON --- */
+.btn {
+  background: #a67c52;
+  color: #fff;
+  padding: 15px 45px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.2em;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  transition: background 0.3s, transform 0.2s;
+  margin-bottom: 2em;
+}
+
+.btn:hover {
+  background: #8b6943;
+  transform: translateY(-2px);
+}
+
+/* --- FOOTER --- */
+footer {
+  margin-top: auto;
+  padding: 20px;
+  font-size: 0.9em;
+  color: #6e5a3f;
+  opacity: 0.8;
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 768px) {
+  .card {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .card img {
+    width: 160px;
+  }
+}
+
+.button-container {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+</style>
+</head>
+
+<body>
+
+<h1>A Scale-aware Vision Transformer-based<br>
+  Approach for Document Stamp Detection</h1>
+<h2>
+Bridging Computer Vision and Digital Humanities<br>
+<i>Chelali M., Gosselet S.-K., Cloppet F., Kurtz C., Bloch I., and Foliard, D.</i>
+</h2>
+
+<!-- INTRO -->
+<div class="section">
+
+  <!-- ================= ABSTRACT ================= -->
+  <h3>Abstract</h3>
+
+  <p>
+    Administrative stamps play a crucial role in the authentication, validation, 
+    and institutional identification of historical documents. However, their analysis 
+    remains challenging due to document degradation, shape variability, and non-standardized placement.
+  </p>
+
+  <p>
+    We introduce <strong>SA-DETR</strong>, a transformer-based framework for robust 
+    stamp detection in archival photographs. Beyond detection, stamps provide key insights 
+    into <strong>document provenance and circulation</strong>, enabling historians to reconstruct 
+    institutional workflows and archival trajectories.
+  </p>
+
+  <p>
+    To address strong scale variability, we propose a novel 
+    <strong>Scale-Aware Positional Encoding (SAPE)</strong>, which models scale as a 
+    <strong>continuous signal</strong> rather than discrete levels.
+  </p>
+
+  <p style="text-align:center; font-size:1.2em;">
+    <strong>+8% improvement over state-of-the-art methods on historical datasets</strong>
+  </p>
+
+
+  <!-- ================= METHOD ================= -->
+  <h3>Method: Scale-Aware Detection Transformer</h3>
+
+<p>
+Modern DETR-like architectures such as DeepSolo rely on multi-scale feature pyramids 
+to detect objects across a wide range of sizes. However, these approaches encode scale 
+using coarse, discrete embeddings, which fail to capture the <strong>continuous scale variations</strong> 
+inherent to historical documents.
+</p>
+
+<p>
+To address this limitation, we introduce <strong>SA-DETR</strong>, a detection framework 
+augmented with a novel <strong>Scale-Aware Positional Encoding (SAPE)</strong> module, 
+which provides Transformer tokens with an explicit and continuous representation of scale.
+</p>
+
+<!-- ===== GLOBAL PIPELINE ===== -->
+<h4 style="margin-top:20px;">Global Architecture</h4>
+
+<div class="workflow">
+  <img src="../assets/workflow.png" alt="SA-DETR global architecture">
+</div>
+
+<p>
+The model processes document images through a transformer-based detection pipeline, 
+where multi-scale features are enhanced using continuous scale-aware embeddings.
+</p>
+
+
+<!-- ===== SAPE MODULE ===== -->
+<h4 style="margin-top:25px;">Scale-Aware Positional Encoding (SAPE)</h4>
+
+<p>
+Unlike traditional methods that treat feature pyramid levels as independent entities, 
+SAPE models scale as a <strong>continuous manifold</strong>, enabling smooth transitions 
+across feature resolutions.
+</p>
+
+<div class="workflow">
+  <img src="../assets/sape_module.png" alt="SAPE module">
+</div>
+
+<p>
+The SAPE embedding is constructed through two complementary components:
+</p>
+
+<ul>
+  <li><strong>Learnable scale-anchor interpolation</strong> to model global scale structure</li>
+  <li><strong>Sinusoidal projection</strong> to capture fine-grained scale variations</li>
+</ul>
+
+<p>
+This hybrid formulation ensures a coherent integration of multi-resolution features, 
+significantly improving robustness in degraded archival images.
+</p>
+
+
+<!-- ===== KEY IDEA ===== -->
+<h3>Key Idea</h3>
+
+<p style="text-align:center; font-size:1.3em; font-weight:bold;">
+Discrete Scale Encoding ❌ → Continuous Scale Modeling ✅
+</p>
+
+<p style="text-align:center; max-width:700px; margin:auto;">
+Instead of relying on discrete feature levels, SA-DETR models scale as a continuous signal, 
+allowing smoother feature interaction and more accurate detection of irregular, faded, 
+and multi-scale stamps in historical documents.
+</p>
+
+
+  <!-- ================= RESULTS ================= -->
+  <h3>Results</h3>
+
+  <p>
+    SA-DETR achieves strong performance on challenging historical datasets such as 
+    <strong>Forbin</strong> and <strong>StaVer</strong>, outperforming both 
+    traditional detectors and transformer-based baselines.
+  </p>
+
+  <!-- Highlight -->
+  <p style="
+    text-align:center; 
+    font-size:1.3em; 
+    background:#efe3d0; 
+    padding:10px; 
+    border-radius:10px;
+    margin-top:15px;">
+    <strong>State-of-the-art performance with +8% improvement</strong>
+  </p>
+
+
+  <!-- TABLE -->
+  <table style="width:100%; border-collapse: collapse; margin-top:25px; font-size:0.95em;">
+    <thead>
+      <tr style="background:#d8c7ae;">
+        <th style="padding:12px; border:1px solid #c9b39a;">Method</th>
+        <th style="padding:12px; border:1px solid #c9b39a;">mAP</th>
+        <th style="padding:12px; border:1px solid #c9b39a;">AP50</th>
+        <th style="padding:12px; border:1px solid #c9b39a;">AP75</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      <tr>
+        <td>Faster R-CNN</td><td>32.26</td><td>74.68</td><td>24.75</td>
+      </tr>
+      <tr>
+        <td>RetinaNet</td><td>30.72</td><td>72.51</td><td>23.15</td>
+      </tr>
+      <tr>
+        <td>YOLOv8n</td><td>33.86</td><td>74.29</td><td>27.57</td>
+      </tr>
+      <tr>
+        <td>Deformable DETR</td><td>27.55</td><td>66.34</td><td>19.55</td>
+      </tr>
+
+      <tr style="background:#efe3d0;">
+        <td><strong>DeepSolo (Baseline)</strong></td>
+        <td>62.09</td><td>82.50</td><td>71.70</td>
+      </tr>
+
+      <tr style="background:#c9b39a; font-weight:bold;">
+        <td>Ours (DeepSolo + SAPE)</td>
+        <td>64.24</td>
+        <td>83.80</td>
+        <td>73.90</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- INTERPRETATION -->
+  <p style="margin-top:20px;">
+    These results demonstrate that modeling scale as a continuous signal significantly 
+    improves robustness in degraded archival documents, addressing a key challenge 
+    in large-scale historical analysis.
+  </p>
+
+  <!-- VISUAL RESULTS -->
+  <img src="assets/results_example.png" 
+       alt="Detection results" 
+       style="width:100%; border-radius:12px; margin-top:20px;">
+
+
+    <h3>Citation</h3>
+
+  <p>
+    If you use this work, please cite:
+  </p>
+
+  
+
+  <pre style="
+    background:#f4eee4;
+    padding:15px;
+    border-radius:10px;
+    border:1px solid #c9b39a;
+    overflow-x:auto;
+    font-size:0.9em;
+  ">
+  <button class="copy-btn" onclick="copyBibtex()" style="position: relative; top: 10px; right: 10px; float: right;">📋</button>
+@inproceedings{chelali2026sadetr,
+  title={A Scale-aware Vision Transformer-based Approach for Document Stamp Detection},
+  author={Chelali, M., Gosselet, S.-K., Cloppet, F., Kurtz, C., Bloch, I., Foliard, D.},
+  booktitle={Proceedings of ICDAR},
+  year={2026}
+}
+  </pre>
+
+</div>
+
+<script>
+function copyBibtex() {
+  const text = `@inproceedings{chelali2026sadetr,
+  title={A Scale-aware Vision Transformer-based Approach for Document Stamp Detection},
+  author={Chelali, M., Gosselet, S.-K., Cloppet, F., Kurtz, C., Bloch, I., Foliard, D.},
+  booktitle={Proceedings of ICDAR},
+  year={2026}
+}`;
+  navigator.clipboard.writeText(text);
+}
+</script>
+
+</div>
+
+
+<!-- BUTTON -->
+<div class="button-container">  
+   <button class="btn" onclick="window.location.href='https://github.com/mchelali/SA-DETR'">
+  🔍 Projet Code
+  </button>
+  <button class="btn" onclick="window.location.href='https://mchelali.github.io/forbin_dataset/explorer.html'">
+    🔍 Explore Dataset
+</button>
+</div>
+
+
+<footer>
+© 2026 — SA-DETR Project | Digital Humanities & Document AI | ANR HIGH VISION (ANR-23-CE38-0001)
+</footer>
+
+</body>
+</html>

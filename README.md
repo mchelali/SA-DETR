@@ -1,4 +1,8 @@
 # SA-DETR: Scale-Aware DEtection TRansformer
+[![Project Page](https://img.shields.io/badge/Project-Website-8b6943?style=for-the-badge)](https://mchelali.github.io/sa-detr/)
+[![Dataset](https://img.shields.io/badge/Dataset-Forbin-blue?style=for-the-badge)]([#](https://huggingface.co/datasets/mchelali/forbin_dataset))
+[![Code](https://img.shields.io/badge/Code-GitHub-black?style=for-the-badge)](https://github.com/mchelali/SA-DETR)
+
 Scale-Aware Detection Transformer for Historical Document Analysis
 
 <div style="background: #c9c6c6a1; text-align: center; padding: 10px;">
