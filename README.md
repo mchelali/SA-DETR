@@ -6,7 +6,7 @@
 Scale-Aware Detection Transformer for Historical Document Analysis
 
 <div style="background: #c9c6c6a1; text-align: center; padding: 10px;">
-    <img src="assets/workflow.png" alt="image" style="zoom:80%;"/>
+    <img src="docs/assets/workflow.png" alt="image" style="zoom:80%;"/>
 </div>
 
 
