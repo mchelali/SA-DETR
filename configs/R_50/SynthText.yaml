@@ -1,0 +1,49 @@
+_BASE_: "Base_det.yaml"
+
+MODEL:
+  # WEIGHTS: "../checkpoints/res50_pretrain_synth-tt-mlt-13-15-textocr.pth" 
+  # WEIGHTS: "output/synthetic_text/model_0012999.pth" 
+  TRANSFORMER:
+    NUM_FEATURE_LEVELS: 4
+    LOSS:
+        BEZIER_SAMPLE_POINTS: 25
+        BEZIER_CLASS_WEIGHT: 1.0
+        BEZIER_COORD_WEIGHT: 1.0
+        POINT_CLASS_WEIGHT: 1.0
+        POINT_COORD_WEIGHT: 1.0
+        LANGUAGE_WEIGHT: 1.0
+        POINT_TEXT_WEIGHT: 0.5
+        BOUNDARY_WEIGHT: 0.5
+        TEXT_PENALTY: 20.0
+
+DATASETS:
+  TRAIN: ("Synthetic_train",)
+  TEST:  ("Synthetic_test",)
+
+# 3) tailles d’entrée (le jeu historique est souvent haute résolution)
+INPUT:
+  MIN_SIZE_TRAIN: (800,900,1000,1100,1200)
+  MAX_SIZE_TRAIN: 2000
+  MIN_SIZE_TEST: 1200
+  MAX_SIZE_TEST: 2000
+  ROTATE: False         # garde True si tu as des pages pivotées
+
+# 4) hyper-paramètres d’entraînement
+SOLVER:
+  IMS_PER_BATCH: 1          # 2 images × 1 GPU ; ajuste si +GPU
+  BASE_LR: 1e-4             # LR ∝ batch_size / 16
+  LR_BACKBONE: 1e-5
+  WARMUP_ITERS: 1000
+  STEPS: (10000, 20000, 30000, )           # décroissance LR optionnelle
+  MAX_ITER: 1000000         # ≈12 epochs si ~10 000 images
+  CHECKPOINT_PERIOD: 1000
+  CLIP_GRADIENTS:
+    ENABLED: True
+    CLIP_TYPE: "full_model"
+    CLIP_VALUE: 0.1
+    NORM_TYPE: 2.0
+
+TEST:
+  EVAL_PERIOD: 100
+
+OUTPUT_DIR: "output/synthetic_text_test"
