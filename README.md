@@ -1,5 +1,5 @@
 # SA-DETR: Scale-Aware DEtection TRansformer
-[![Project Page](https://img.shields.io/badge/Project-Website-8b6943?style=for-the-badge)](https://mchelali.github.io/sa-detr/)
+[![Project Page](https://img.shields.io/badge/Project-Website-8b6943?style=for-the-badge)](https://mchelali.github.io/SA-DETR/)
 [![Dataset](https://img.shields.io/badge/Dataset-Forbin-blue?style=for-the-badge)]([#](https://huggingface.co/datasets/mchelali/forbin_dataset))
 [![Code](https://img.shields.io/badge/Code-GitHub-black?style=for-the-badge)](https://github.com/mchelali/SA-DETR)
 
