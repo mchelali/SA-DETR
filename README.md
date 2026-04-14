@@ -110,7 +110,7 @@ digital humanities applications.
 # Citation
 
 ```bibtex
-@inproceedings{ye2023deepsolo,
+@inproceedings{mchelali26_sape,
   title={Scale-Aware DEtection TRansformer for Historical Document Analysis},
   author={M., Chelali, et al.},
   booktitle={Proceedings of ICDAR},
