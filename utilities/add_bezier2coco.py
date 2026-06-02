@@ -8,7 +8,11 @@ from typing import List, Dict, Optional
 import numpy as np
 from tqdm import tqdm
 
-from utilities.curves import robust_polygon_to_bezier  # Pour une barre de progression
+from utilities.curves import (
+    robust_polygon_to_bezier,
+    robust_polygon_to_bezier_v2,
+    robust_polygon_to_bezier_v3,
+)
 
 # Import de tes fonctions spécialisées
 try:
@@ -86,7 +90,7 @@ def process_annotation(ann: Dict, char2idx: Dict[str, int]) -> Dict:
                 # ann["bezier_pts"] = (
                 #     quad_to_bezier(polygon.tolist()).reshape(-1).tolist()
                 # )
-                ann["bezier_pts"] = robust_polygon_to_bezier(polygon.tolist())
+                ann["bezier_pts"] = robust_polygon_to_bezier_v3(polygon.tolist())
             else:
                 logging.warning(
                     f"Annotation {ann.get('id')} : Polygone trop petit ({len(polygon)} pts)."

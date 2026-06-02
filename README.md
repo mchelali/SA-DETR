@@ -115,9 +115,9 @@ digital humanities applications.
 
 ```bibtex
 @inproceedings{mchelali26_sape,
-  title={Scale-Aware DEtection TRansformer for Historical Document Analysis},
+  title={Scale-Aware Feature-Level Encoding for Historical Document Stamp Detection},
   author={M., Chelali, et al.},
-  booktitle={Proceedings of ICDAR},
+  booktitle={Proceedings of DAS@ICDAR26},
   pages={XX--XX},
   year={2026}
 }

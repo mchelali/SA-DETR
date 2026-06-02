@@ -116,7 +116,13 @@ class COCOVisualizer:
         self.visualizer = SimpleVisualizer(self.image_rgb)
 
     def draw_from_coco_json(
-        self, coco_data, image_id, pred_color=None, label_prefix="", alpha=0.5
+        self,
+        coco_data,
+        image_id,
+        pred_color=None,
+        label_prefix="",
+        alpha=0.5,
+        score_threshold=None,
     ):
         """
         Draw annotations from COCO format JSON data.
@@ -127,12 +133,19 @@ class COCOVisualizer:
             pred_color (tuple): Color for predictions as RGB (0-1). If None, random colors used.
             label_prefix (str): Prefix for labels (e.g., "GT", "Pred")
             alpha (float): Transparency for masks
+            score_threshold (float): Minimum prediction score to draw. Annotations
+                without a score, such as GT annotations, are not filtered.
         """
         # Find annotations for this image
         annotations = [
             ann
             for ann in coco_data.get("annotations", [])
             if ann.get("image_id") == image_id
+            and (
+                score_threshold is None
+                or "score" not in ann
+                or ann["score"] >= score_threshold
+            )
         ]
 
         if not annotations:
@@ -173,15 +186,15 @@ class COCOVisualizer:
             elif "bbox" in annotation:
                 bbox = annotation["bbox"]
                 x, y, w, h = bbox[0], bbox[1], bbox[2], bbox[3]
-                self.visualizer.draw_box(
-                    [x, y, x + w, y + h], alpha=alpha, color=color
-                )
+                self.visualizer.draw_box([x, y, x + w, y + h], alpha=alpha, color=color)
             else:
                 pass
 
         return self.visualizer.output_image
 
-    def draw_predictions_vs_gt(self, pred_json_data, gt_json_data, image_id, alpha=0.5):
+    def draw_predictions_vs_gt(
+        self, pred_json_data, gt_json_data, image_id, alpha=0.5, score_threshold=None
+    ):
         """
         Draw both predictions and ground truth on the same image for comparison.
 
@@ -190,6 +203,7 @@ class COCOVisualizer:
             gt_json_data (dict): COCO format ground truth
             image_id (int): ID of the image to visualize
             alpha (float): Transparency for masks
+            score_threshold (float): Minimum prediction score to draw.
         """
         # Draw GT in green
         self.draw_from_coco_json(
@@ -203,6 +217,7 @@ class COCOVisualizer:
             pred_color=(1, 0, 0),
             label_prefix="Pred",
             alpha=alpha,
+            score_threshold=score_threshold,
         )
 
         return self.visualizer.output_image
@@ -226,6 +241,7 @@ def visualize_coco_json(
     max_images=None,
     mode="pred_vs_gt",
     alpha=0.5,
+    score_threshold=None,
     display=False,
 ):
     """
@@ -239,6 +255,7 @@ def visualize_coco_json(
         max_images (int): Maximum number of images to visualize
         mode (str): One of "predictions_vs_gt", "predictions_only", "gt_only"
         alpha (float): Transparency level for overlays
+        score_threshold (float): Minimum prediction score to visualize
         display (bool): Whether to display images in window
 
     Returns:
@@ -305,10 +322,20 @@ def visualize_coco_json(
 
             # Draw based on mode
             if mode == "pred_vs_gt":
-                viz.draw_predictions_vs_gt(pred_data, gt_data, img_id, alpha=alpha)
+                viz.draw_predictions_vs_gt(
+                    pred_data,
+                    gt_data,
+                    img_id,
+                    alpha=alpha,
+                    score_threshold=score_threshold,
+                )
             elif mode == "pred_only":
                 viz.draw_from_coco_json(
-                    pred_data, img_id, pred_color=(1, 0, 0), alpha=alpha
+                    pred_data,
+                    img_id,
+                    pred_color=(1, 0, 0),
+                    alpha=alpha,
+                    score_threshold=score_threshold,
                 )
             elif mode == "gt_only":
                 viz.draw_from_coco_json(
@@ -406,6 +433,12 @@ def get_parser():
         help="Transparency level for overlays (0.0-1.0)",
     )
     parser.add_argument(
+        "--score-threshold",
+        type=float,
+        default=None,
+        help="Minimum prediction score to visualize. If omitted, no score filtering is applied.",
+    )
+    parser.add_argument(
         "--display",
         action="store_true",
         help="Display images in window",
@@ -430,6 +463,7 @@ if __name__ == "__main__":
             max_images=args.max_images,
             mode=args.coco_mode,
             alpha=args.alpha,
+            score_threshold=args.score_threshold,
             display=args.display and args.output is None,
         )
         logger.info(f"Visualization complete. Summary: {summary}")

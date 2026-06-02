@@ -94,12 +94,16 @@ _PREDEFINED_SPLITS_TEXT = {
     ),
     # Historical_Postcards_Dataset_v1
     "hist_postcard_train": (
-        "Historical_Postcards/Historical_Postcards_Dataset_v1-Train2025/images/",
-        "Historical_Postcards/Historical_Postcards_Dataset_v1-Train2025/annotations/instances_Train.json",
+        "Historical_Postcards/Historical_Postcards_Dataset_v1-Train2025/images/Train/",
+        "Historical_Postcards/processed_stamp/instances_Train_stamp_train.json",
+    ),
+    "hist_postcard_val": (
+        "Historical_Postcards/Historical_Postcards_Dataset_v1-Train2025/images/Train/",
+        "Historical_Postcards/processed_stamp/instances_Train_stamp_val.json",
     ),
     "hist_postcard_test": (
-        "Historical_Postcards/Historical_Postcards_Dataset_v1-Test2025/images/",
-        "Historical_Postcards/Historical_Postcards_Dataset_v1-Test2025/annotations/instances_Test.json",
+        "Historical_Postcards/Historical_Postcards_Dataset_v1-Test2025/images/Test/",
+        "Historical_Postcards/processed_stamp/instances_Test_stamp.json",
     ),
     # evaluation, just for reading images, annotations may be empty
     "mlt19_test": ("mlt19/test_images", "mlt19/mlt19_test.json"),

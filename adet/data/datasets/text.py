@@ -118,11 +118,9 @@ def load_text_json(
         # apply this mapping as well but print a warning.
         if not (min(cat_ids) == 1 and max(cat_ids) == len(cat_ids)):
             if "coco" not in dataset_name:
-                logger.warning(
-                    """
+                logger.warning("""
 Category ids in annotations are not in [1, #categories]! We'll apply a mapping for you.
-"""
-                )
+""")
         id_map = {v: i for i, v in enumerate(cat_ids)}
         meta.thing_dataset_id_to_contiguous_id = id_map
 

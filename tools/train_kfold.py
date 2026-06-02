@@ -269,8 +269,8 @@ def main(args):
         cfg.DATASETS.TRAIN = (f"{args.base_name}_fold{fold}_train",)
         cfg.DATASETS.TEST = (f"{args.base_name}_fold{fold}_val",)
         if args.eval_only:
-            # cfg.DATASETS.TEST = (f"{args.base_name}_fold{fold}_test",)
-            cfg.DATASETS.TEST = (f"{test_dataset}",)
+            cfg.DATASETS.TEST = (f"{args.base_name}_fold{fold}_test",)
+            # cfg.DATASETS.TEST = (f"{test_dataset}",)
         cfg.OUTPUT_DIR = os.path.join(cfg.OUTPUT_DIR, f"forbin_stamps_fold{fold}")
         # cfg.MODEL.DEVICE = "cpu"
         os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)

@@ -274,6 +274,7 @@ class TextEvaluator:
                 or self.dataset_name == "forbin"
                 or self.dataset_name == "StaVer"
                 or self.dataset_name == "icdar2015"
+                or self.dataset_name == "hist_postcard"
             ):
                 # ----------------------------------------------------------
                 #   Synthetic : on génère UN zip avec toutes les prédictions
@@ -365,7 +366,7 @@ class TextEvaluator:
             try:
                 coco_gt = COCO(coco_json)
                 coco_dt = coco_gt.loadRes(pred_json_path)
-                coco_eval = COCOeval(coco_gt, coco_dt, iouType="bbox")
+                coco_eval = COCOeval(coco_gt, coco_dt, iouType="segm")
                 coco_eval.evaluate()
                 coco_eval.accumulate()
                 coco_eval.summarize()

@@ -198,7 +198,7 @@ class Trainer(DefaultTrainer):
         hooks_list.append(
             EarlyStoppingHook(
                 metric_name="bbox/AP",  # det/hmean
-                patience=30,  # Nombre de fois où on tolère pas d'amélioration (basé sur EVAL_PERIOD)
+                patience=10,  # Nombre de fois où on tolère pas d'amélioration (basé sur EVAL_PERIOD)
                 mode="max",
             )
         )

@@ -47,7 +47,6 @@ class VisualizationDemo(object):
         if cfg.MODEL.BACKBONE.NAME == "build_vitaev2_backbone":
             self.predictor = ViTAEPredictor(cfg)
 
-
     def run_on_image(self, image):
         """
         Args:
@@ -63,9 +62,13 @@ class VisualizationDemo(object):
         # Convert image from OpenCV BGR format to Matplotlib RGB format.
         image = image[:, :, ::-1]
         if self.vis_text:
-            visualizer = TextVisualizer(image, self.metadata, instance_mode=self.instance_mode, cfg=self.cfg)
+            visualizer = TextVisualizer(
+                image, self.metadata, instance_mode=self.instance_mode, cfg=self.cfg
+            )
         else:
-            visualizer = Visualizer(image, self.metadata, instance_mode=self.instance_mode)
+            visualizer = Visualizer(
+                image, self.metadata, instance_mode=self.instance_mode
+            )
 
         if "bases" in predictions:
             self.vis_bases(predictions["bases"])
@@ -77,7 +80,8 @@ class VisualizationDemo(object):
         else:
             if "sem_seg" in predictions:
                 vis_output = visualizer.draw_sem_seg(
-                    predictions["sem_seg"].argmax(dim=0).to(self.cpu_device))
+                    predictions["sem_seg"].argmax(dim=0).to(self.cpu_device)
+                )
             if "instances" in predictions:
                 instances = predictions["instances"].to(self.cpu_device)
                 vis_output = visualizer.draw_instance_predictions(predictions=instances)
@@ -131,7 +135,9 @@ class VisualizationDemo(object):
                 )
             elif "instances" in predictions:
                 predictions = predictions["instances"].to(self.cpu_device)
-                vis_frame = video_visualizer.draw_instance_predictions(frame, predictions)
+                vis_frame = video_visualizer.draw_instance_predictions(
+                    frame, predictions
+                )
             elif "sem_seg" in predictions:
                 vis_frame = video_visualizer.draw_sem_seg(
                     frame, predictions["sem_seg"].argmax(dim=0).to(self.cpu_device)
