@@ -37,6 +37,17 @@ def safe_polygon(coords):
     return poly
 
 
+def bezier_pts_to_boundary(bezier_pts, num_pts=25):
+    """
+    Contour fermé (2 * num_pts, 2) des 2 Béziers cubiques de `bezier_pts`
+    (haut P0..P3 puis bas P0..P3 en boucle), même calcul que load_text_json.
+    """
+    ctrl = np.asarray(bezier_pts, dtype=float).reshape(2, 4, 2)
+    u = np.linspace(0, 1, num_pts)[:, None]
+    basis = np.hstack([(1 - u) ** 3, 3 * u * (1 - u) ** 2, 3 * u**2 * (1 - u), u**3])
+    return np.vstack([basis @ ctrl[0], basis @ ctrl[1]])
+
+
 class TextEvaluator:
     """
     Evaluate text proposals and recognition.
@@ -317,10 +328,14 @@ class TextEvaluator:
                 continue
             img_id = ann["image_id"]
             try:
-                poly = np.array(ann["bezier_pts"]).reshape(-1, 2)
-            except:
-                print(img_id)
-                print(ann)
+                # Contour échantillonné sur les 2 Béziers (et non le polygone des
+                # 8 points de contrôle, faux dès qu'un côté est courbe).
+                poly = bezier_pts_to_boundary(ann["bezier_pts"])
+            except (KeyError, ValueError) as e:
+                self._logger.warning(
+                    f"GT ignorée (image {img_id}, annotation {ann.get('id')}) : {e}"
+                )
+                continue
 
             gt_by_img[img_id].append(
                 {
