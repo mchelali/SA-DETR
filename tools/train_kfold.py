@@ -258,6 +258,7 @@ def main(args):
         args.image_root,
         args.base_name,
         args.n_folds,
+        num_pts_cfg=cfg_base.MODEL.TRANSFORMER.NUM_POINTS,
     )
     test_dataset = "StaVer_test"
 
