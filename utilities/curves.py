@@ -782,3 +782,255 @@ def robust_polygon_to_bezier_v3(segmentation_pts, thresh_flat=0.05, thresh_curve
     )
 
     return np.vstack([line1, line2])  # , shape  # shape utile pour debug/log
+
+
+##################################################################################
+# v4 : conversion polygone -> 2 Béziers cubiques, choix des coins par IoU
+#
+# Corrige les défauts de v3 (cf. utilities/README_add_bezier2coco.md) :
+#  - un point posé sur un petit côté ne fait plus basculer un côté en "courbe" :
+#    les coins sont choisis sur le polygone simplifié et la coupe haut/bas suit
+#    l'ordre des sommets (de coin en coin) au lieu de la ligne médiane ;
+#  - l'ajustement se fait par moindres carrés sur le contour densifié (les
+#    arêtes, pas seulement les sommets) : la courbe ne déborde plus ;
+#  - plusieurs jeux de coins sont essayés, le contour qui se croise est rejeté
+#    et celui de meilleure IoU avec le polygone est retenu ;
+#  - sortie dans un ordre canonique : haut de gauche à droite (P0 -> P3) puis
+#    bas de droite à gauche, dans le repère du grand axe. Le sens « gauche ->
+#    droite » de l'axe est fixé par son angle (cf. DIRECTION_CUT_DEG), pas par
+#    le sens de lecture du texte, que le polygone seul ne permet pas de connaître.
+##################################################################################
+
+from shapely.geometry import Polygon as _ShapelyPolygon
+
+
+def _signed_area(pts):
+    """Aire signée (repère image, y vers le bas) : > 0 pour un parcours horaire à l'écran."""
+    x, y = pts[:, 0], pts[:, 1]
+    return 0.5 * float(np.sum(x * np.roll(y, -1) - np.roll(x, -1) * y))
+
+
+def _densify_closed(pts, step):
+    """
+    Échantillonne le contour fermé tous les `step` pixels environ.
+
+    Les sommets d'origine sont conservés ; renvoie le contour dense et l'indice
+    de chaque sommet d'origine dans ce contour.
+    """
+    dense, vertex_idx = [], []
+    n = len(pts)
+    for i in range(n):
+        a, b = pts[i], pts[(i + 1) % n]
+        k = max(1, int(np.ceil(np.linalg.norm(b - a) / step)))
+        vertex_idx.append(len(dense))
+        for j in range(k):
+            dense.append(a + (b - a) * j / k)
+    return np.array(dense, dtype=float), np.array(vertex_idx)
+
+
+def _cubic_basis(t):
+    t = np.asarray(t, dtype=float)[:, None]
+    return np.hstack([(1 - t) ** 3, 3 * t * (1 - t) ** 2, 3 * t**2 * (1 - t), t**3])
+
+
+def _fit_cubic_fixed_ends(chain, n_iter=3):
+    """
+    Bézier cubique de moindres carrés sur une suite ordonnée de points.
+
+    Les extrémités sont fixées au premier et au dernier point ; P1 et P2 sont
+    résolus en forme fermée, puis les paramètres t sont recalés `n_iter` fois
+    sur le point de courbe le plus proche.
+    """
+    p0, p3 = chain[0], chain[-1]
+    straight = [p0, p0 + (p3 - p0) / 3, p0 + 2 * (p3 - p0) / 3, p3]
+    if len(chain) < 3:
+        return np.array(straight)
+
+    seg = np.linalg.norm(np.diff(chain, axis=0), axis=1)
+    total = seg.sum()
+    if total < 1e-6:
+        return np.array(straight)
+    t = np.concatenate([[0.0], np.cumsum(seg)]) / total  # paramétrage par longueur de corde
+
+    t_fine = np.linspace(0, 1, 400)
+    ctrl = np.array(straight)
+    for _ in range(n_iter + 1):
+        basis = _cubic_basis(t)
+        rhs = chain - np.outer(basis[:, 0], p0) - np.outer(basis[:, 3], p3)
+        sol, *_ = np.linalg.lstsq(basis[:, 1:3], rhs, rcond=None)
+        ctrl = np.vstack([p0, sol, p3])
+        # Recalage : chaque point prend le t du point de courbe le plus proche
+        curve = _cubic_basis(t_fine) @ ctrl
+        d = np.linalg.norm(chain[:, None, :] - curve[None, :, :], axis=2)
+        t = t_fine[np.argmin(d, axis=1)]
+        t[0], t[-1] = 0.0, 1.0
+    return ctrl
+
+
+def _chain(dense, i_start, i_end):
+    """Points du contour dense de i_start à i_end inclus, dans le sens du parcours."""
+    if i_end >= i_start:
+        return dense[i_start : i_end + 1]
+    return np.vstack([dense[i_start:], dense[: i_end + 1]])
+
+
+def _sample_bezier_boundary(ctrl8, n=25):
+    """Contour fermé (2n points) des 2 Béziers, même calcul que adet/data/datasets/text.py."""
+    basis = _cubic_basis(np.linspace(0, 1, n))
+    return np.vstack([basis @ ctrl8[:4], basis @ ctrl8[4:]])
+
+
+# Angle (degrés, repère image : 0 = horizontal, 90 = vertical vers le bas) où le
+# sens de l'axe bascule. L'axe est orienté pour que son angle soit dans
+# [DIRECTION_CUT_DEG - 180, DIRECTION_CUT_DEG) : un tampon horizontal va de
+# gauche à droite, un tampon vertical de bas en haut (horizontal tourné d'un
+# quart de tour à gauche). 55° est l'orientation la moins fréquente sur Forbin
+# (29 tampons sur 4509 à ±5°, contre 221 autour de la verticale).
+DIRECTION_CUT_DEG = 55.0
+
+
+def _frame(box_center, u):
+    """Repère (u, v) : u le long de l'axe, orienté selon DIRECTION_CUT_DEG ; v vers le « bas »."""
+    phi = np.degrees(np.arctan2(u[1], u[0]))
+    if not (DIRECTION_CUT_DEG - 180 <= phi < DIRECTION_CUT_DEG):
+        u = -u
+    v = np.array([-u[1], u[0]])
+    return u, v
+
+
+def robust_polygon_to_bezier_v4(
+    segmentation_pts, simplify_ratio=0.03, try_short_axis_margin=0.01, square_ratio=0.85
+):
+    """
+    Convertit un polygone de segmentation en 8 points de Bézier (2 cubiques).
+
+    Retourne un tableau (8, 2) : [haut P0..P3 (gauche -> droite),
+    bas P0..P3 (droite -> gauche)], le bas partant du côté où finit le haut.
+
+    Paramètres :
+      simplify_ratio : tolérance de Douglas-Peucker, en fraction du petit côté
+          du rectangle minimal. Sert uniquement à choisir les coins : les
+          sommets quasi alignés sur un côté ne peuvent pas devenir des coins.
+      try_short_axis_margin, square_ratio : pour un tampon presque carré
+          (petit côté / grand côté > square_ratio), où le grand axe est
+          arbitraire, le petit axe est aussi essayé ; il n'est retenu que s'il
+          améliore l'IoU d'au moins try_short_axis_margin. Sinon, le grand axe
+          est imposé pour garder une direction cohérente entre tampons.
+    """
+    pts = np.asarray(segmentation_pts, dtype=float).reshape(-1, 2)
+    # Doublons consécutifs
+    keep = np.linalg.norm(pts - np.roll(pts, 1, axis=0), axis=1) > 1e-6
+    pts = pts[keep] if keep.sum() >= 3 else pts
+
+    (cx, cy), (w, h), angle = cv2.minAreaRect(pts.astype(np.float32))
+    if len(pts) < 3 or min(w, h) < 1e-6:
+        pts = cv2.boxPoints(((cx, cy), (max(w, 1.0), max(h, 1.0)), angle)).astype(float)
+        (cx, cy), (w, h), angle = cv2.minAreaRect(pts.astype(np.float32))
+
+    # Parcours horaire à l'écran : TL -> TR -> BR -> BL
+    if _signed_area(pts) < 0:
+        pts = pts[::-1]
+
+    target = _ShapelyPolygon(pts)
+    if not target.is_valid:
+        target = target.buffer(0)
+
+    # Polygone simplifié : candidats pour les coins
+    eps = simplify_ratio * min(w, h)
+    simp = cv2.approxPolyDP(pts.astype(np.float32).reshape(-1, 1, 2), eps, True)
+    simp = simp.reshape(-1, 2).astype(float)
+    if len(simp) < 4:
+        simp = pts
+
+    step = max(min(w, h), max(w, h)) / 150.0
+    dense, vidx = _densify_closed(pts, max(step, 0.5))
+    # Indice dense des sommets simplifiés (ce sont des sommets d'origine)
+    simp_idx = np.array(
+        [vidx[np.argmin(np.linalg.norm(pts - s, axis=1))] for s in simp]
+    )
+
+    center = np.array([cx, cy])
+    theta = np.deg2rad(angle)
+    axis_w = np.array([np.cos(theta), np.sin(theta)])  # axe de longueur w
+    axis_h = np.array([-np.sin(theta), np.cos(theta)])  # axe de longueur h
+    long_axis, length, width = (axis_w, w, h) if w >= h else (axis_h, h, w)
+    short_axis = np.array([-long_axis[1], long_axis[0]])
+
+    def corner_sets(u_axis, L, W):
+        u, v = _frame(center, u_axis)
+        proj = (dense - center) @ u
+        i_left, i_right = int(np.argmin(proj)), int(np.argmax(proj))
+        sets = []
+        # (0) polygone simplifié à 4 sommets : ces sommets sont les coins. Parmi
+        # les 4 rotations, on prend celle dont le côté TL->TR va le plus vers la
+        # droite et se trouve le plus en haut (cas des parallélogrammes penchés,
+        # où deux coins du rectangle minimal tombent sur le même sommet).
+        if len(simp_idx) == 4:
+            def top_score(k):
+                a, b = dense[simp_idx[k]], dense[simp_idx[(k + 1) % 4]]
+                return (b - a) @ u / L - ((a + b) / 2 - center) @ v / max(W, 1e-6)
+            k = max(range(4), key=top_score)
+            sets.append([int(simp_idx[(k + j) % 4]) for j in range(4)])
+        # (a) sommets simplifiés les plus proches des coins du rectangle
+        box = [
+            center - u * L / 2 - v * W / 2,  # TL
+            center + u * L / 2 - v * W / 2,  # TR
+            center + u * L / 2 + v * W / 2,  # BR
+            center - u * L / 2 + v * W / 2,  # BL
+        ]
+        sets.append(
+            [int(simp_idx[np.argmin(np.linalg.norm(simp - c, axis=1))]) for c in box]
+        )
+        # (b) extrémités du grand axe (formes ovales : pas de petit côté droit)
+        sets.append([i_left, i_right, i_right, i_left])
+        # (c) points du contour dense les plus proches des coins (coins arrondis)
+        sets.append([int(np.argmin(np.linalg.norm(dense - c, axis=1))) for c in box])
+        return sets
+
+    def build(corners):
+        tl, tr, br, bl = corners
+        n = len(dense)
+        # Les coins doivent se suivre dans le sens du parcours : TL, TR, BR, BL.
+        # BL peut être confondu avec TL (et BR avec TR) : petit côté de longueur nulle.
+        o_tr, o_br = (tr - tl) % n, (br - tl) % n
+        o_bl = (bl - tl) % n or n
+        if not (0 < o_tr <= o_br < o_bl <= n):
+            return None
+        top = _fit_cubic_fixed_ends(_chain(dense, tl, tr))
+        bottom = _fit_cubic_fixed_ends(_chain(dense, br, bl))
+        return np.vstack([top, bottom])
+
+    def score(ctrl8):
+        poly = _ShapelyPolygon(_sample_bezier_boundary(ctrl8, 50))
+        if not poly.is_valid:  # contour qui se croise : rejeté
+            return -1.0
+        union = poly.union(target).area
+        return poly.intersection(target).area / union if union > 0 else 0.0
+
+    axes = [(long_axis, length, width)]
+    if width / max(length, 1e-6) > square_ratio:
+        axes.append((short_axis, width, length))
+
+    best, best_iou = None, -2.0
+    for axis_idx, (u_axis, L, W) in enumerate(axes):
+        margin = 0.0 if axis_idx == 0 else try_short_axis_margin
+        for corners in corner_sets(u_axis, L, W):
+            ctrl8 = build(corners)
+            if ctrl8 is None:
+                continue
+            iou = score(ctrl8)
+            if iou > best_iou + margin:
+                best, best_iou = ctrl8, iou
+
+    if best is None:
+        # Repli : rectangle minimal, côtés droits
+        u, v = _frame(center, long_axis)
+        tl = center - u * length / 2 - v * width / 2
+        tr = center + u * length / 2 - v * width / 2
+        br = center + u * length / 2 + v * width / 2
+        bl = center - u * length / 2 + v * width / 2
+        best = np.array(
+            [tl, tl + (tr - tl) / 3, tl + 2 * (tr - tl) / 3, tr,
+             br, br + (bl - br) / 3, br + 2 * (bl - br) / 3, bl]
+        )
+    return best
