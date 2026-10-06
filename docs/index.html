@@ -1,543 +1,305 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>SA-DETR — Historical Document Analysis</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scale-Aware Feature-Level Encoding for Historical Document Stamp Detection</title>
+<meta name="description" content="Chelali et al., Scale-Aware Feature-Level Encoding for Historical Document Stamp Detection, DAS 2026 (LNCS 16851).">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 
 <style>
-/* --- STYLE GLOBAL (harmonisé Forbin) --- */
+:root {
+  --bg:      #f3f3f1;
+  --paper:   #fbfbfa;
+  --text:    #222;
+  --muted:   #666;
+  --rule:    #dcdcd8;
+  --strong:  #b9b9b4;
+  --accent:  #2f3b55;   /* seule couleur : liens et ligne SA-DETR */
+  --serif:   "EB Garamond", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --mono:    ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
 body {
-  font-family: 'Georgia', serif;
-  background-color: #f5ecdf;
-  color: #3e2f1c;
   margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-height: 100vh;
-  text-align: center;
-
-  background-image: 
-    radial-gradient(rgba(255,255,255,0.5) 1px, transparent 1px),
-    linear-gradient(to bottom, #f7eee2, #efe3d0);
-  background-size: 6px 6px, 100% 100%;
+  padding: 0 16px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--serif);
+  font-size: 1.22rem;   /* EB Garamond a un petit œil : taille plus grande */
+  line-height: 1.6;
+  font-variant-numeric: oldstyle-nums;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* --- TITRES --- */
+main {
+  max-width: 820px;
+  margin: 3rem auto;
+  padding: clamp(1.5rem, 1rem + 3vw, 3.5rem);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+}
+
+a { color: var(--accent); text-underline-offset: 3px; }
+
+img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+
+/* ---------- En-tête ---------- */
+header { text-align: center; margin-bottom: 2.5rem; }
+
 h1 {
-  font-family: 'Times New Roman', serif;
-  font-size: 2.5em;
-  margin-top: 1.5em;
-  margin-bottom: 0.3em;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: #3b2a16;
-  text-shadow: 1px 1px 0 #fff, 2px 2px 0 #c9b39a;
+  font-weight: 500;
+  font-size: clamp(1.6rem, 1.2rem + 1.8vw, 2.3rem);
+  line-height: 1.2;
+  margin: 0 0 1.25rem;
+  text-wrap: balance;
 }
 
+.authors { margin: 0 0 0.4rem; font-size: 1.1rem; }
+
+.venue { margin: 0 0 1.25rem; color: var(--muted); font-style: italic; }
+
+.links { margin: 0; color: var(--muted); }
+.links a { margin: 0 0.4rem; }
+
+/* ---------- Corps ---------- */
 h2 {
-  font-weight: normal;
-  font-size: 1.4em;
-  color: #6b5439;
-  margin-bottom: 2em;
-  max-width: 900px;
-  line-height: 1.4;
+  font-weight: 500;
+  font-size: 1.5rem;
+  margin: 2.5rem 0 0.75rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--rule);
 }
 
-/* --- CARDS (style musée / archive) --- */
-.card {
-  background: #ede3d5;
-  border: 1px solid #c9b39a;
-  border-radius: 20px;
-  box-shadow: 0 8px 15px rgba(0,0,0,0.1);
-  padding: 30px 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 40px;
-  max-width: 950px;
-  text-align: left;
-  margin-bottom: 2.5em;
-  transition: transform 0.2s ease, box-shadow 0.3s ease;
-}
+p { margin: 0 0 1rem; }
 
-.card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 18px rgba(0,0,0,0.15);
-}
-
-/* --- IMAGE --- */
-.card img {
-  width: 220px;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-/* --- TEXTE --- */
-.text-content {
-  flex: 1;
-}
-
-.text-content p {
-  font-size: 1.1em;
-  line-height: 1.7;
-  margin-bottom: 1em;
-}
-
-.text-content strong {
-  color: #8b6943;
-}
-
-/* --- SECTION BLOCK (ajout scientifique) --- */
-.section {
-  background: #ede3d5;
-  border: 1px solid #c9b39a;
-  border-radius: 20px;
-  padding: 30px 40px;
-  max-width: 950px;
-  margin-bottom: 2.5em;
-  text-align: left;
-  box-shadow: 0 8px 15px rgba(0,0,0,0.08);
-}
-
-.section h3 {
-  font-family: 'Times New Roman', serif;
-  color: #3b2a16;
-  margin-bottom: 15px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-/* --- WORKFLOW IMAGE --- */
-.workflow {
-  /* width: 100%; */
-  border-radius: 12px;
-  margin-top: 15px;
+figure { margin: 1.5rem 0; }
+img.narrow { max-width: 440px; width: 100%; }
+figcaption {
+  margin-top: 0.6rem;
+  font-size: 1.02rem;
+  color: var(--muted);
   text-align: center;
 }
 
-/* --- BOUTON --- */
-.btn {
-  background: #a67c52;
-  color: #fff;
-  padding: 15px 45px;
-  border: none;
-  border-radius: 10px;
-  font-size: 1.2em;
-  font-weight: bold;
-  cursor: pointer;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-  transition: background 0.3s, transform 0.2s;
-  margin-bottom: 2em;
-}
+/* ---------- Tableau ---------- */
+.table-scroll { overflow-x: auto; margin-top: 1rem; }
 
-.btn:hover {
-  background: #8b6943;
-  transform: translateY(-2px);
-}
-
-/* --- FOOTER --- */
-footer {
-  margin-top: auto;
-  padding: 20px;
-  font-size: 0.9em;
-  color: #6e5a3f;
-  opacity: 0.8;
-}
-
-/* --- RESPONSIVE --- */
-@media (max-width: 768px) {
-  .card {
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .card img {
-    width: 160px;
-  }
-}
-
-.button-container {
-  display: flex;
-  gap: 20px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.results-table-wrapper {
-  margin-top: 25px;
-  overflow-x: auto;
-}
-
-.results-table {
+table {
   width: 100%;
+  min-width: 600px;
   border-collapse: collapse;
-  font-size: 0.9em;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+caption {
+  caption-side: bottom;
+  text-align: left;
+  font-size: 1rem;
+  color: var(--muted);
+  padding-top: 0.75rem;
+}
+th, td { padding: 0.45rem 0.6rem; text-align: center; }
+thead tr:first-child th { border-top: 1.5px solid var(--text); }
+thead tr:last-child th { border-bottom: 1px solid var(--text); }
+tbody tr:last-child td { border-bottom: 1.5px solid var(--text); }
+th { font-weight: normal; }
+td:first-child, th:first-child { text-align: left; white-space: nowrap; }
+.ds { border-left: 1px solid var(--rule); }
+tr.sep td { border-top: 1px solid var(--strong); }
+tr.ours td { color: var(--accent); }
+tr.ours td:first-child { font-weight: bold; }
+
+.r1 { font-weight: bold; }
+.r2 { text-decoration: underline; text-underline-offset: 3px; }
+.r3 { color: var(--muted); font-weight: bold; }
+
+/* ---------- Citation ---------- */
+pre {
+  margin: 0;
+  padding: 1rem 1.25rem;
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+footer {
+  max-width: 820px;
+  margin: 0 auto 3rem;
   text-align: center;
-}
-
-.results-table caption {
-  caption-side: top;
-  text-align: left;
-  line-height: 1.5;
-  margin-bottom: 12px;
-  color: #4d3a24;
-}
-
-.results-table th,
-.results-table td {
-  padding: 10px;
-  border: 1px solid #c9b39a;
-}
-
-.results-table th {
-  background: #d8c7ae;
-}
-
-.results-table td:first-child,
-.results-table th:first-child {
-  text-align: left;
-  white-space: nowrap;
-}
-
-.rank-second {
-  text-decoration: underline;
-}
-
-.rank-third {
-  color: #777;
-  font-weight: bold;
-}
-
-.separator-row td {
-  border-top: 2px dashed #8b6943;
-  border-bottom: 2px dashed #8b6943;
-  padding: 0;
-  height: 5px;
-  background: #efe3d0;
+  font-size: 0.98rem;
+  color: var(--muted);
 }
 </style>
 </head>
 
 <body>
 
-<h1>Scale-Aware Feature-Level Encoding<br>
-for Historical Document Stamp Detection</h1>
-<h2>
-Bridging Computer Vision and Digital Humanities<br>
-<i>Chelali M., Cloppet F., Kurtz C., Bloch I., and Foliard, D.</i>
-</h2>
+<main>
 
-<!-- INTRO -->
-<div class="section">
-
-  <!-- ================= ABSTRACT ================= -->
-  <h3>Abstract</h3>
-
-  <p>
-    Administrative stamps play a crucial role in the authentication, validation, 
-    and institutional identification of historical documents. However, their analysis 
-    remains challenging due to document degradation, shape variability, and non-standardized placement.
+<header>
+  <h1>Scale-Aware Feature-Level Encoding for Historical Document Stamp Detection</h1>
+  <p class="authors">Mohamed Chelali, Florence Cloppet, Camille Kurtz, Isabelle Bloch, Daniel Foliard</p>
+  <p class="venue">International Workshop on Document Analysis Systems (DAS 2026), Vienna, Austria<br>
+    Lecture Notes in Computer Science, vol. 16851, pp. 195–212, Springer</p>
+  <p class="links">
+    <a href="https://doi.org/10.1007/978-3-032-36207-0_12">Paper</a> ·
+    <a href="https://github.com/mchelali/SA-DETR">Code</a> ·
+    <a href="https://mchelali.github.io/forbin_dataset/explorer.html">Forbin dataset</a>
   </p>
+</header>
 
-  <p>
-    We introduce <strong>SA-DETR</strong>, a transformer-based framework for robust 
-    stamp detection in archival photographs. Beyond detection, stamps provide key insights 
-    into <strong>document provenance and circulation</strong>, enabling historians to reconstruct 
-    institutional workflows and archival trajectories.
-  </p>
-
-  <p>
-    To address strong scale variability, we propose a novel 
-    <strong>Scale-Aware Positional Encoding (SAPE)</strong>, which models scale as a 
-    <strong>continuous signal</strong> rather than discrete levels.
-  </p>
-
-
-  <!-- ================= METHOD ================= -->
-  <h3>Method: Scale-Aware Detection Transformer</h3>
+<h2>Summary</h2>
 
 <p>
-Modern DETR-like architectures such as DeepSolo rely on multi-scale feature pyramids 
-to detect objects across a wide range of sizes. However, these approaches encode scale 
-using coarse, discrete embeddings, which fail to capture the <strong>continuous scale variations</strong> 
-inherent to historical documents.
+  Administrative stamps authenticate, validate and identify the institutions behind historical
+  documents. They also trace a document's provenance and circulation, helping historians
+  reconstruct institutional workflows. Detecting them automatically is difficult: documents are
+  degraded, stamps vary widely in shape and size, and they can appear anywhere on the page.
 </p>
 
 <p>
-To address this limitation, we introduce <strong>SA-DETR</strong>, a detection framework 
-augmented with a novel <strong>Scale-Aware Positional Encoding (SAPE)</strong> module, 
-which provides Transformer tokens with an explicit and continuous representation of scale.
+  We propose <strong>SA-DETR</strong>, a transformer-based stamp detector built on DeepSolo.
+  Detection transformers usually encode scale with one discrete embedding per level of the
+  feature pyramid. SA-DETR replaces it with a <strong>Scale-Aware Positional Encoding (SAPE)</strong>
+  that treats scale as a continuous signal.
 </p>
 
-<!-- ===== GLOBAL PIPELINE ===== -->
-<h4 style="margin-top:20px;">Global Architecture</h4>
+<figure>
+  <img src="assets/workflow.png" alt="SA-DETR architecture: multi-scale features are flattened and enriched with SAPE and positional encoding, then processed by a Transformer encoder-decoder that outputs the detected stamps." width="730" height="255">
+  <figcaption>Overview of SA-DETR. SAPE adds a continuous scale encoding to the multi-scale features before the Transformer.</figcaption>
+</figure>
 
-<div class="workflow">
-  <img src="assets/workflow.png" alt="SA-DETR global architecture">
+<p>
+  SAPE takes the normalized scale <i>s</i> ∈ [0, 1] of each feature level and combines two
+  paths: an interpolation between learned scale anchors, which captures the overall scale
+  structure, and a sinusoidal projection, which captures fine scale variations.
+</p>
+
+<figure>
+  <img class="narrow" src="assets/sape_module.png" alt="SAPE module: from the normalized scale s, a continuous path (sinusoidal encoding then linear projection) and a discrete path (learned table T with linear interpolation) are summed into the SAPE embedding." width="423" height="236">
+  <figcaption>The SAPE module: continuous path (left) and discrete path (right).</figcaption>
+</figure>
+
+<h2>Results</h2>
+
+<p>
+  SA-DETR was evaluated on three historical datasets: Forbin, HistPostCard and StaVer.
+  It obtains the best mAP and AP<sub>75</sub> on Forbin and the best AP<sub>75</sub> on
+  HistPostCard, and improves the mAP of DeepSolo, on which it is built, on all three datasets.
+</p>
+
+<div class="table-scroll">
+  <table>
+    <caption>
+      Detection results. Best, second-best and third-best results per column are shown in bold,
+      underlined and gray bold, respectively.
+    </caption>
+    <thead>
+      <tr>
+        <th rowspan="2">Method</th>
+        <th colspan="3" class="ds">Forbin</th>
+        <th colspan="3" class="ds">HistPostCard</th>
+        <th colspan="3" class="ds">StaVer</th>
+      </tr>
+      <tr>
+        <th class="ds">mAP</th><th>AP<sub>50</sub></th><th>AP<sub>75</sub></th>
+        <th class="ds">mAP</th><th>AP<sub>50</sub></th><th>AP<sub>75</sub></th>
+        <th class="ds">mAP</th><th>AP<sub>50</sub></th><th>AP<sub>75</sub></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Faster R-CNN</td>
+        <td class="ds"><span class="r3">34.06</span></td><td><span class="r1">75.73</span></td><td>25.93</td>
+        <td class="ds"><span class="r2">82.60</span></td><td><span class="r3">99.50</span></td><td><span class="r2">94.10</span></td>
+        <td class="ds"><span class="r2">70.84</span></td><td><span class="r1">96.00</span></td><td><span class="r3">78.56</span></td>
+      </tr>
+      <tr>
+        <td>RetinaNet</td>
+        <td class="ds">30.83</td><td>72.57</td><td>22.61</td>
+        <td class="ds"><span class="r1">86.80</span></td><td><span class="r1">100.00</span></td><td><span class="r2">94.10</span></td>
+        <td class="ds"><span class="r1">76.36</span></td><td><span class="r2">95.53</span></td><td><span class="r1">84.20</span></td>
+      </tr>
+      <tr>
+        <td>YOLOv8-s</td>
+        <td class="ds">32.73</td><td>73.25</td><td>24.83</td>
+        <td class="ds">77.70</td><td>94.30</td><td>89.20</td>
+        <td class="ds">57.70</td><td>81.70</td><td>62.20</td>
+      </tr>
+      <tr>
+        <td>YOLOv11-s</td>
+        <td class="ds">33.73</td><td><span class="r3">74.82</span></td><td><span class="r3">26.02</span></td>
+        <td class="ds"><span class="r3">78.50</span></td><td>94.10</td><td>91.80</td>
+        <td class="ds">61.27</td><td>81.99</td><td>67.99</td>
+      </tr>
+      <tr>
+        <td>Deform. DETR</td>
+        <td class="ds">27.79</td><td>68.20</td><td>18.47</td>
+        <td class="ds">52.20</td><td>83.10</td><td>64.40</td>
+        <td class="ds">55.34</td><td>89.77</td><td>61.55</td>
+      </tr>
+      <tr class="sep">
+        <td>DeepSolo</td>
+        <td class="ds"><span class="r2">44.14</span></td><td>68.73</td><td><span class="r2">50.31</span></td>
+        <td class="ds">56.11</td><td>92.01</td><td>63.53</td>
+        <td class="ds">67.46</td><td>95.01</td><td>74.02</td>
+      </tr>
+      <tr class="ours">
+        <td>SA-DETR (ours)</td>
+        <td class="ds"><span class="r1">46.19</span></td><td><span class="r2">74.91</span></td><td><span class="r1">50.35</span></td>
+        <td class="ds">76.82</td><td><span class="r1">100.00</span></td><td><span class="r1">95.66</span></td>
+        <td class="ds"><span class="r3">70.78</span></td><td><span class="r3">95.48</span></td><td><span class="r2">80.10</span></td>
+      </tr>
+    </tbody>
+  </table>
 </div>
 
-<p>
-The model processes document images through a transformer-based detection pipeline, 
-where multi-scale features are enhanced using continuous scale-aware embeddings.
+<p style="margin-top:1.75rem;">
+  To compare the methods across all datasets and metrics, we rank them on each of the nine
+  columns above and average the ranks. SA-DETR obtains the best average rank (2.17),
+  ahead of Faster R-CNN (2.39) and RetinaNet (2.89).
 </p>
 
+<figure>
+  <img src="assets/cdd-map-ap50-ap75.png" alt="Critical difference diagram of average ranks over mAP, AP50 and AP75 on the three datasets: SA-DETR 2.17, Faster R-CNN 2.39, RetinaNet 2.89, YOLOv11-s 4.22, DeepSolo 4.56, YOLOv8-s 5.11, Deformable DETR 6.67." width="997" height="219">
+  <figcaption>
+    Critical difference diagram of the average ranks over mAP, AP<sub>50</sub> and AP<sub>75</sub>
+    on the three datasets (lower is better). Horizontal bars connect methods whose
+    differences are not statistically significant.
+  </figcaption>
+</figure>
 
-<!-- ===== SAPE MODULE ===== -->
-<h4 style="margin-top:25px;">Scale-Aware Positional Encoding (SAPE)</h4>
+<h2>Citation</h2>
 
-<p>
-Unlike traditional methods that treat feature pyramid levels as independent entities, 
-SAPE models scale as a <strong>continuous manifold</strong>, enabling smooth transitions 
-across feature resolutions.
-</p>
+<pre>@inproceedings{chelali_DAS_2026,
+  author    = {Chelali, Mohamed and Cloppet, Florence and Kurtz, Camille and
+               Bloch, Isabelle and Foliard, Daniel},
+  title     = {Scale-Aware Feature-Level Encoding for Historical Document Stamp Detection},
+  booktitle = {International Workshop on Document Analysis Systems -- DAS 2026},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {16851},
+  pages     = {195--212},
+  year      = {2026},
+  month     = {sep},
+  address   = {Vienna, Austria},
+  publisher = {Springer Nature Switzerland},
+  isbn      = {978-3-032-36207-0},
+  doi       = {10.1007/978-3-032-36207-0_12}
+}</pre>
 
-<div class="workflow">
-  <img src="assets/sape_module.png" alt="SAPE module">
-</div>
-
-<p>
-The SAPE embedding is constructed through two complementary components:
-</p>
-
-<ul>
-  <li><strong>Learnable scale-anchor interpolation</strong> to model global scale structure</li>
-  <li><strong>Sinusoidal projection</strong> to capture fine-grained scale variations</li>
-</ul>
-
-<p>
-This hybrid formulation ensures a coherent integration of multi-resolution features, 
-significantly improving robustness in degraded archival images.
-</p>
-
-
-<!-- ===== KEY IDEA ===== -->
-<h3>Key Idea</h3>
-
-<p style="text-align:center; font-size:1.3em; font-weight:bold;">
-Discrete Scale Encoding ❌ → Continuous Scale Modeling ✅
-</p>
-
-<p style="text-align:center; max-width:700px; margin:auto;">
-Instead of relying on discrete feature levels, SA-DETR models scale as a continuous signal, 
-allowing smoother feature interaction and more accurate detection of irregular, faded, 
-and multi-scale stamps in historical documents.
-</p>
-
-
-  <!-- ================= RESULTS ================= -->
-  <h3>Results</h3>
-
-  <p>
-    SA-DETR achieves strong performance on challenging historical datasets such as 
-    <strong>Forbin</strong>, <strong>HistPostCard</strong>, and <strong>StaVer</strong>, outperforming both 
-    traditional detectors and transformer-based baselines.
-  </p>
-
-  <!-- Highlight -->
-  <p style="
-    text-align:center; 
-    font-size:1.3em; 
-    background:#efe3d0; 
-    padding:10px; 
-    border-radius:10px;
-    margin-top:15px;">
-    <strong>State-of-the-art performance with +8% improvement</strong>
-  </p>
-
-
-  <!-- TABLE -->
-  <div class="results-table-wrapper">
-    <table class="results-table">
-      <caption>
-        Overall detection performance comparison across the three evaluation datasets.
-        The proposed SA-DETR achieves competitive mAP scores and improves localization precision,
-        particularly under the stricter AP<sub>75</sub> metric.
-        Best, second-best, and third-best results in each column are indicated in bold,
-        underlined, and gray bold, respectively.
-      </caption>
-      <thead>
-        <tr>
-          <th></th>
-          <th colspan="3">Forbin</th>
-          <th colspan="3">HistPostCard</th>
-          <th colspan="3">StaVer</th>
-        </tr>
-        <tr>
-          <th>Method</th>
-          <th>mAP</th>
-          <th>AP<sub>50</sub></th>
-          <th>AP<sub>75</sub></th>
-          <th>mAP</th>
-          <th>AP<sub>50</sub></th>
-          <th>AP<sub>75</sub></th>
-          <th>mAP</th>
-          <th>AP<sub>50</sub></th>
-          <th>AP<sub>75</sub></th>
-        </tr>
-      </thead>
-
-      <tbody>
-        <tr>
-          <td>Faster R-CNN</td>
-          <td><span class="rank-third">34.06</span></td>
-          <td><strong>75.73</strong></td>
-          <td>25.93</td>
-          <td><span class="rank-second">82.60</span></td>
-          <td><span class="rank-third">99.50</span></td>
-          <td><span class="rank-second">94.10</span></td>
-          <td><span class="rank-second">70.84</span></td>
-          <td><strong>96.00</strong></td>
-          <td><span class="rank-third">78.56</span></td>
-        </tr>
-        <tr>
-          <td>RetinaNet</td>
-          <td>30.83</td>
-          <td>72.57</td>
-          <td>22.61</td>
-          <td><strong>86.80</strong></td>
-          <td><strong>100.00</strong></td>
-          <td><span class="rank-second">94.10</span></td>
-          <td><strong>76.36</strong></td>
-          <td><span class="rank-second">95.53</span></td>
-          <td><strong>84.20</strong></td>
-        </tr>
-        <tr>
-          <td>YOLOv8-s</td>
-          <td>32.73</td>
-          <td>73.25</td>
-          <td>24.83</td>
-          <td>77.70</td>
-          <td>94.30</td>
-          <td>89.20</td>
-          <td>57.70</td>
-          <td>81.70</td>
-          <td>62.20</td>
-        </tr>
-        <tr>
-          <td>YOLOv11-s</td>
-          <td>33.73</td>
-          <td><span class="rank-third">74.82</span></td>
-          <td><span class="rank-third">26.02</span></td>
-          <td><span class="rank-third">78.50</span></td>
-          <td>94.10</td>
-          <td>91.80</td>
-          <td>61.27</td>
-          <td>81.99</td>
-          <td>67.99</td>
-        </tr>
-        <tr>
-          <td>Deform. DETR</td>
-          <td>27.79</td>
-          <td>68.20</td>
-          <td>18.47</td>
-          <td>52.20</td>
-          <td>83.10</td>
-          <td>64.40</td>
-          <td>55.34</td>
-          <td>89.77</td>
-          <td>61.55</td>
-        </tr>
-        <tr class="separator-row">
-          <td colspan="10"></td>
-        </tr>
-        <tr>
-          <td>DeepSolo</td>
-          <td><span class="rank-second">44.14</span></td>
-          <td>68.73</td>
-          <td><span class="rank-second">50.31</span></td>
-          <td>56.11</td>
-          <td>92.01</td>
-          <td>63.53</td>
-          <td>67.46</td>
-          <td>95.01</td>
-          <td>74.02</td>
-        </tr>
-        <tr style="background:#c9b39a;">
-          <td><strong>SA-DETR</strong></td>
-          <td><strong>46.19</strong></td>
-          <td><span class="rank-second">74.91</span></td>
-          <td><strong>50.35</strong></td>
-          <td>76.82</td>
-          <td><strong>100.00</strong></td>
-          <td><strong>95.66</strong></td>
-          <td><span class="rank-third">70.78</span></td>
-          <td><span class="rank-third">95.48</span></td>
-          <td><span class="rank-second">80.10</span></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <!-- INTERPRETATION -->
-  <p style="margin-top:20px;">
-    These results demonstrate that modeling scale as a continuous signal significantly 
-    improves robustness in degraded archival documents, addressing a key challenge 
-    in large-scale historical analysis.
-  </p>
-
-  <!-- VISUAL RESULTS -->
-  <img src="assets/results_example.png" 
-       alt="Detection results" 
-       style="width:100%; border-radius:12px; margin-top:20px;">
-
-
-    <h3>Citation</h3>
-
-  <p>
-    If you use this work, please cite:
-  </p>
-
-  
-
-  <pre style="
-    background:#f4eee4;
-    padding:15px;
-    border-radius:10px;
-    border:1px solid #c9b39a;
-    overflow-x:auto;
-    font-size:0.9em;
-  ">
-  <button class="copy-btn" onclick="copyBibtex()" style="position: relative; top: 10px; right: 10px; float: right;">📋</button>
-@inproceedings{chelali2026sadetr,
-  title={A Scale-aware Vision Transformer-based Approach for Document Stamp Detection},
-  author={Chelali, M., Cloppet, F., Kurtz, C., Bloch, I., Foliard, D.},
-  booktitle={Proceedings of DAS@ICDAR},
-  year={2026}
-}
-  </pre>
-
-</div>
-
-<script>
-function copyBibtex() {
-  const text = `@inproceedings{chelali2026sadetr,
-  title={A Scale-aware Vision Transformer-based Approach for Document Stamp Detection},
-  author={Chelali, M., Cloppet, F., Kurtz, C., Bloch, I., Foliard, D.},
-  booktitle={Proceedings of DAS@ICDAR},
-  year={2026}
-}`;
-  navigator.clipboard.writeText(text);
-}
-</script>
-
-</div>
-
-
-<!-- BUTTON -->
-<div class="button-container">  
-   <button class="btn" onclick="window.location.href='https://github.com/mchelali/SA-DETR'">
-  🔍 Projet Code
-  </button>
-  <button class="btn" onclick="window.location.href='https://mchelali.github.io/forbin_dataset/explorer.html'">
-    Explore Dataset
-</button>
-</div>
-
+</main>
 
 <footer>
-© 2026 — SA-DETR Project | Digital Humanities & Document AI | ANR HIGH VISION (ANR-23-CE38-0001)
+  This work was supported by the ANR project HIGH VISION (ANR-24-CE38-4079).
 </footer>
 
 </body>
